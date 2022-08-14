@@ -1,15 +1,14 @@
-import itertools, math, time, getpass # normal python stuff
-
-from projectq import MainEngine, types  # import the main compiler engine
-from projectq.ops import H, S, T, X, CNOT, get_inverse, Measure  # import the operations we want to perform
+import itertools, math, time, getpass
+from projectq import MainEngine, types  # main compiler engine
+from projectq.ops import H, S, T, X, CNOT, get_inverse, Measure  # operations we want to perform
 
 ###############################################################################
 ### global configuration
 ###############################################################################
 
-play_game = True
-timeout = 1 # seconds
-num_samples_for_game = 1000
+PLAY_GAME = True
+TIMEOUT = 1 # in seconds
+NUM_SAMPLES_FOR_GAME = 1000
 
 ###############################################################################
 ### global constants
@@ -17,8 +16,8 @@ num_samples_for_game = 1000
 
 INVALID_INPUT_MSG = "u wot m8? Try that again."
 
-# A ship (its positions) is represented by two of five qubits.
-ship_bit_positions = dict(
+# A ship (its position) is represented by two of five qubits.
+SHIP_BIT_POSITIONS = dict(
     a = [0, 1],
     b = [0, 2],
     c = [1, 2],
@@ -57,12 +56,11 @@ def display_intro_player_1():
     print("|  / \  |")
     print("| e   c |")
     print("|/     \|\n")
-    # note: at time of release, ProjectQ does not actually put the qubits in the places you'd expect on the IBM chip
     input()
 
 def display_intro_player_2():
     # get player 2 to position three bombs
-    time.sleep(timeout)
+    time.sleep(TIMEOUT)
     print("\nPlayer 2: You're up!")
     input()
     print("The numbers below mark places you can bomb.\n")
@@ -78,17 +76,20 @@ def display_intro_player_2():
     input()
 
 def display_intermidiate_message():
-    time.sleep(timeout)
+    time.sleep(TIMEOUT)
     print("\nNow let's see how intact the ship is.")
     print("Between 1% and 100% intact means it's still afloat.")
     print("Between -1% and -100% intact means it's swimming with the fishes.")
     print("0% intact could go either way.\n")
 
 def display_results(damage, rounding = False):
-    time.sleep(timeout)
+    time.sleep(TIMEOUT)
     conv = int if rounding else float # crude way to round
+    # NOTE: To transform damage to 1 - 2*damage is essential to demonstrate the
+    # violation of the CHSH-Inequality. This makes "Intactness" an observable
+    # with the two eigenvalues +1 and -1 (instead of 0 and 1 as for "Damage").
     print(f"The ship is {conv( 100*(1 - 2*damage) )}% intact")
-    if play_game:
+    if PLAY_GAME:
         print(f"(which means {conv( -100*(1 - 2*damage) )}% broken).\n")
         if (damage > 0.5):
             print("It has been destroyed!\nPlayer 2 wins!\n\n")
@@ -96,12 +97,8 @@ def display_results(damage, rounding = False):
             print("It's still afloat!\nPlayer 1 wins!\n\n")
 
 
-def prompt_for_ship(default_ship = None):
-    """Ask user for the ship. If default_ship is given skip asking user."""
-    available_ships = ship_bit_positions.keys()
-
-    if default_ship is not None and default_ship in available_ships:
-        return default_ship
+def prompt_for_ship():
+    available_ships = SHIP_BIT_POSITIONS.keys()
 
     while True:
         ship = getpass.getpass(f"Choose a line for your ship. ({', '.join(available_ships)})\n")
@@ -111,24 +108,17 @@ def prompt_for_ship(default_ship = None):
             print(INVALID_INPUT_MSG)
 
 
-def prompt_for_bombs(default_bombs = None):
-    """Ask user for bombs. If default_bombs is given skip asking user."""
+def prompt_for_bombs():
     bombs = []
-    if default_bombs is None: default_bombs = []
-
     ordinals = ["first", "second"]
 
     while (len(bombs) < 2):
-        bomb = default_bombs[len(bombs)] if len(bombs) < len(default_bombs) else None
+        try:
+            bomb = int(input(f"\nChoose a position for your {ordinals[len(bombs)]} bomb. (0, 1, 2, 3 or 4)\n"))
+        except:
+            bomb = None
 
-        if bomb is None:
-            try:
-                bomb = int(input(f"\nChoose a position for your {ordinals[len(bombs)]} bomb. (0, 1, 2, 3 or 4)\n"))
-            except:
-                print(INVALID_INPUT_MSG)
-                continue
-
-        if (bomb >= 0) and (bomb < 5) :
+        if (bomb is not None) and (bomb >= 0) and (bomb < 5) :
             if bomb not in bombs:
                 bombs.append(bomb)
             else:
@@ -158,16 +148,15 @@ def entangle_CHSH(qubits, bobs, i, j):
 
 def get_probabilities(qubits: types.Qureg):
     eng = qubits.engine
-    return { bit_string: eng.backend.get_probability(bit_string, qubits)
-        for bit_string in itertools.product(*5*[[0, 1]])}
+    return { bs: eng.backend.get_probability(bs, qubits) for bs in itertools.product(*5*[[0, 1]]) }
 
 
-def run_scenario(eng, ship, bombs, do_measurements = True):
+def run_scenario(eng, ship, bombs, do_measurements=True):
     qubits = eng.allocate_qureg(5)
     bobs = 5 * [0] # 0="no bob", 1="is bob".
 
     # prepare the two ship-qubits and mark which one is the bob
-    entangle_CHSH(qubits, bobs, *ship_bit_positions[ship])
+    entangle_CHSH(qubits, bobs, *SHIP_BIT_POSITIONS[ship])
 
     # apply the bombs
     # whether or not a bomb is applied corresponds to the two measurment choices for CHSH (in x-y plane)
@@ -177,8 +166,7 @@ def run_scenario(eng, ship, bombs, do_measurements = True):
         else:
             S | qubits[bomb]
 
-    # TODO: Better name
-    results = None
+    results = None # TODO: Better name
 
     if do_measurements:
         # measure should be done in X basis, therefore we apply Hadamard here
@@ -209,56 +197,59 @@ def run_scenario(eng, ship, bombs, do_measurements = True):
 ### Main code
 ###############################################################################
 
-def main(ship = None, bombs = None):
+def main(ship=None, bombs=None):
     eng = MainEngine() # Uses a simulation of a quantum computer
-
-    if play_game: display_intro()
-
-    if play_game: display_intro_player_1()
-    ship = prompt_for_ship(ship)
-
-    if play_game: display_intro_player_2()
-    bombs = prompt_for_bombs(bombs)
 
     # If we do not play the game we directly get the probabilities, hence we do
     # not need more then one run.
-    num_samples = num_samples_for_game if play_game else 1
+    num_samples = NUM_SAMPLES_FOR_GAME if PLAY_GAME else 1
 
-    if play_game: print(f"\nWe'll now run {num_samples} samples of this scenario and see what happens.")
+    if PLAY_GAME:
+        display_intro()
+
+        display_intro_player_1()
+        ship = prompt_for_ship()
+
+        display_intro_player_2()
+        bombs = prompt_for_bombs()
+
+        print(f"\nWe'll now run {num_samples} samples of this scenario and see what happens.")
+
+    assert bombs is not None
+    assert ship is not None
 
     # Not sure if this loop is really necessary, but the approach from the
     # original script didn't work anymore (for the Simulator backend).
-    results = dict()
+    accumulated_results = dict()
     for i in range(1, num_samples + 1):
-        if play_game: print(f"{int(100*(i/num_samples)):3}% Done.", end="\r" if i != num_samples else "\n")
-        r = run_scenario(eng, ship, bombs, do_measurements=play_game)
+        if PLAY_GAME: print(f"{int(100*(i/num_samples)):3}% Done.", end="\r" if i != num_samples else "\n")
+        results = run_scenario(eng, ship, bombs, do_measurements=PLAY_GAME)
 
-        for bs, prob in r.items():
-            results.setdefault(bs, 0.0)
-            results[bs] += prob / num_samples
+        for bs, prob in results.items():
+            accumulated_results.setdefault(bs, 0.0)
+            accumulated_results[bs] += prob / num_samples
 
-    if play_game: display_intermidiate_message()
+    if PLAY_GAME: display_intermidiate_message()
 
     # determine damage for ship
     damage = 0
     for bs0 in itertools.product(*3*[[0, 1]]):
         for bits in [[0, 1], [1, 0]]:
-            bit_string = list(bs0)
-            bit_string.insert(ship_bit_positions[ship][0], bits[0])
-            bit_string.insert(ship_bit_positions[ship][1], bits[1])
-            bit_string = tuple(bit_string)
-            damage += results[bit_string]
+            bs = list(bs0)
+            bs.insert(SHIP_BIT_POSITIONS[ship][0], bits[0])
+            bs.insert(SHIP_BIT_POSITIONS[ship][1], bits[1])
+            bs = tuple(bs)
+            damage += accumulated_results[bs]
 
-    display_results(damage, rounding=play_game)
+    display_results(damage, rounding=PLAY_GAME)
 
 
 if __name__ == "__main__":
-    if play_game:
+    if PLAY_GAME:
         main()
     else:
-        timeout = 0
-        ships = ship_bit_positions.keys()
-        #ships = ["a"]
+        TIMEOUT = 0
+        ships = SHIP_BIT_POSITIONS.keys()
         for ship in ships:
             bomb_combis = itertools.combinations([0, 1, 2, 3, 4], 2)
             for bombs in bomb_combis:

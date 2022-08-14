@@ -3,15 +3,17 @@
 This repo contains the game `Quantum Battleships` originally devised by James Wootton. His original python script was "published" in [this medium article](https://decodoku.medium.com/quantum-battleships-the-first-multiplayer-game-for-a-quantum-computer-e4d600ccb3f3).
 
 We heavily refactored the script. Most notably we
-- reorganized the code structure,
-- tweaked the code to be compatible with a newer version of `projectq`,
-- use `projectq`'s `Simulator` backend instead of the `IBMBackend` for simplicity.
+- Give the code some structure and added some explanatory comments (accepting more verbosity),
+- tweaked the code to be compatible with a newer version of `projectq` (unfortunately some things got more complicated because of that),
+- use `projectq`'s `Simulator` backend instead of the `IBMBackend` to avoid registering with a quantum computation provider,
+- added some functionality beyond the game,
+- catched *some* more errors (though, certainly not perfect).
 
-Moreover we added an option to not play the game but to instead print the expected outcomes of all possible scenarios (there are not that many ways the game can be played). Just set `play_game = False` (see the config section of the script).
+In particular we added an option to not play the game but to instead print the expected outcomes of all possible scenarios. There are not that many ways the game can be played. Just set `PLAY_GAME = False` (see the config section of the script).
 
-You might be disappointed that we just use a simulator. But it is actually easy to tweak the script to use any other backend, including any real quantum computer. See [the docs of projectq](https://projectq.readthedocs.io/en/latest/index.html) on how to do that. I did not do that because I found it to be overkill to register with a provider of quantum computation just to try out a little game.
+You might be disappointed that we just use a simulator. But it is actually easy to tweak the script to use any other backend, including any real quantum computer. See [the docs of projectq](https://projectq.readthedocs.io/en/latest/index.html) on how to do that.
 
-The game is still not very fancy. I just did the rewrite for my own pleasure while studying the theory behind the game - which in contrast is very fascinating (for me). Feel free to use the script for whatever purpose. I doubt that the original author has anything against it.
+The game is still not very fancy (actually it should look roughly the same). I just did the rewrite for my own pleasure while studying the theory behind the game - which in contrast is very fascinating (for me). My main motivation for the rewrite was to simplify the (very small) part of the code which is actually doing the hard work and to refactor everything in a way to be easily adjustable for further experiments (as domenstrated by the config). It was a "design-goal" to essentially leave the game as is when using the script in `PLAY_GAME=True`-mode. Feel free to use the script for whatever purpose. I doubt that the original author has anything against it.
 
 ## Setup
 
@@ -47,4 +49,4 @@ After you successfully completed the setup you can start and play the game by ru
 
 Note that you have to run the script from within the virtual environment (see setup).
 
-There is a little section `global configruation` at the top of the script. You can adjust the parameters to tweak the behavior of the game. In particular you can print out the (statistically) expected outcomes of all possible ways the game can be played by setting `play_game = False`.
+There is a little section `global configruation` at the top of the script. You can adjust the parameters to tweak the behavior of the game. In particular you can print out the (statistically) expected outcomes of all possible ways the game can be played by setting `PLAY_GAME = False`.
