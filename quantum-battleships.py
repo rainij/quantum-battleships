@@ -7,7 +7,7 @@ from projectq.ops import H, S, T, X, CNOT, get_inverse, Measure  # import the op
 ### global configuration
 ###############################################################################
 
-play_game = False
+play_game = True
 timeout = 1 # seconds
 num_samples_for_game = 1000
 
