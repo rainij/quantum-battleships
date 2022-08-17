@@ -166,7 +166,7 @@ def run_scenario(eng, ship, bombs, do_measurements=True):
         else:
             S | qubits[bomb]
 
-    results = None # TODO: Better name
+    results = None # TODO: Better name?
 
     if do_measurements:
         # measure should be done in X basis, therefore we apply Hadamard here
